@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>歐洲 12 日跨國之旅助手 (Gemini AI 單檔升級版)</title>
+  
+  <!-- 載入 Tailwind CSS (負責所有精美排版與樣式) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- 載入 React 核心與 Babel (負責畫面邏輯與互動) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <style>
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* 隱藏捲軸但保持可捲動 */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .animate-fadeIn {
+      animation: fadeIn 0.4s ease-out forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <!-- React 應用程式的掛載點 -->
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // Google Map 導航連結產生器
+    const getGoogleMapUrl = (locationName) => {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationName)}`;
+    };
+
+    // 城市氣象對應資料庫
+    const CITIES = [
+      { id: 'amsterdam', name: '阿姆斯特丹 (Amsterdam)', country: '荷蘭 🇳🇱', lat: 52.3676, lon: 4.9041, dates: '10/07 - 10/10' },
+      { id: 'brussels', name: '布魯塞爾 (Brussels)', country: '比利時 🇧🇪', lat: 50.8503, lon: 4.3517, dates: '10/10 - 10/12' },
+      { id: 'paris', name: '巴黎 (Paris)', country: '法國 🇫🇷', lat: 48.8566, lon: 2.3522, dates: '10/12 - 10/14' },
+      { id: 'grindelwald', name: '格林德瓦 / 少女峰 (Grindelwald)', country: '瑞士 🇨🇭', lat: 46.6242, lon: 8.0414, dates: '10/14 - 10/17' },
+      { id: 'zurich', name: '蘇黎世 (Zürich)', country: '瑞士 🇨🇭', lat: 47.3769, lon: 8.5417, dates: '10/17 - 10/18' }
+    ];
+
+    // 當地美食指南
+    const LOCAL_FOOD_GUIDE = [
+      {
+        country: '🇳🇱 荷蘭 (Netherlands)',
+        foodItems: [
+          { name: '現做荷蘭焦糖餅 (Stroopwafel)', type: '街頭甜點', desc: '現煎熱騰騰薄餅夾焦糖餡，放熱咖啡杯口蒸軟吃最道地！', recommend: 'Van Wonderen / Albert Cuyp 市集', price: '€2.5 - €6', img: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&w=600&q=80' },
+          { name: '荷蘭生鯡魚 (Haring) & 炸魚塊', type: '海鮮小食', desc: '生鯡魚配洋蔥酸黃瓜，一口吞下；炸魚塊沾美乃滋外酥內嫩。', recommend: 'Volendam 港邊小攤 / 市區 Frens Haring', price: '€4 - €8', img: 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=600&q=80' },
+          { name: 'FEBO 自動販賣機肉餅 (Kroket)', type: '特色速食', desc: '投幣式熱食櫃！必試牛肉炸肉餅與特製美乃滋薯條。', recommend: 'FEBO 門市', price: '€2.5 - €5', img: 'https://images.unsplash.com/photo-1561758033-d89a9ad46330?auto=format&fit=crop&w=600&q=80' }
+        ]
+      },
+      {
+        country: '🇧🇪 比利時 (Belgium)',
+        foodItems: [
+          { name: '比利時雙重炸薯條 (Frites)', type: '國寶街頭小食', desc: '牛油雙重炸製，外脆內綿密，搭配 Samouraï 侍酒師醬。', recommend: 'Maison Antoine / Fritland', price: '€4 - €7', img: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=600&q=80' },
+          { name: '白酒燉淡菜鍋 (Moules-Frites)', type: '特色名菜', desc: '芹菜洋蔥白酒燉煮新鮮黑淡菜，配炸薯條與修道院白啤酒。', recommend: 'Chez Léon 1893', price: '€22 - €30', img: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?auto=format&fit=crop&w=600&q=80' }
+        ]
+      },
+      {
+        country: '🇫🇷 法國巴黎 (France / Paris)',
+        foodItems: [
+          { name: '法式油封鴨 (Canard Confité)', type: '法餐主菜', desc: '鴨腿低溫油泡數小時，皮煎至金黃酥脆，肉質入口即化。', recommend: 'Le Bouillon Chartier 平價百年食堂', price: '€14 - €22', img: 'https://images.unsplash.com/photo-1514944288352-fffac99f0bdf?auto=format&fit=crop&w=600&q=80' },
+          { name: '法式可頌 & 馬卡龍', type: '烘焙糕點', desc: '蜂窩狀純奶油可頌，與 Pierre Hermé 玫瑰荔枝馬卡龍。', recommend: 'Pierre Hermé', price: '€1.5 - €10', img: 'https://images.unsplash.com/photo-1558326957-63a23078a632?auto=format&fit=crop&w=600&q=80' }
+        ]
+      },
+      {
+        country: '🇨🇭 瑞士 (Switzerland)',
+        foodItems: [
+          { name: '瑞士高山起司鍋 (Fondue)', type: '阿爾卑斯國菜', desc: '融化起司沾白麵包，搭配金黃煎薯餅 (Rösti) 與香腸。', recommend: 'Hotel Fiescherblick / Swiss Chuchi', price: '€28 - €40', img: 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=600&q=80' },
+          { name: '蘇黎世奶油切肉 (Zürcher)', type: '經典名菜', desc: '細嫩牛肉切片搭配蘑菇白醬與白葡萄酒燉煮。', recommend: 'Zeughauskeller 軍火庫餐廳', price: '€32 - €42', img: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80' }
+        ]
+      }
+    ];
+
+    // 12天行程完整數據
+    const ITINERARY_DATA = [
+      {
+        day: 1, date: '2026/10/07 (三)', cityId: 'amsterdam', city: '阿姆斯特丹', country: '荷蘭 🇳🇱',
+        title: '啟程飛往歐洲・抵達荷蘭阿姆斯特丹',
+        summary: '香港出發經迪拜轉機抵達阿姆斯特丹史基浦機場，搭火車直達市中心並辦理飯店入住。',
+        coverImg: 'https://images.unsplash.com/photo-1512470876302-972faa2aa9a4?auto=format&fit=crop&w=800&q=80',
+        highlights: ['香港國際機場 (HKG)', '迪拜轉機 (DXB)', '史基浦機場 (AMS)', 'the niu Fender'],
+        foodPicks: [
+          { name: 'FEBO 炸肉餅', loc: '中央車站', desc: '抵達後快速補充能量的荷蘭特色小吃！' }
+        ],
+        events: [
+          { time: '00:00', location: '香港國際機場 (HKG)', type: 'flight', note: '登機飛往迪拜', details: '辦理出境護照檢查與安檢。', tips: '登機前裝滿溫水，長途飛行注意補充水分。' },
+          { time: '13:15', location: '阿姆斯特丹史基浦機場 (AMS)', type: 'flight', note: '抵達史基浦機場', details: '海關入境，準備回程機票與飯店單備查。', tips: '出關 follow Train 標示，地下 B1 站台直接刷信用卡 (OVpay) 進站。' },
+          { time: '15:30', location: 'the niu Fender Hotel Amsterdam', type: 'hotel', note: '辦理入住休整', details: '現代設計感飯店。', tips: '牙刷拖鞋建議自備。搭 Tram 26 直達中央車站。' }
+        ],
+        transits: [
+          { from: '史基浦機場 (AMS)', to: 'Central Station', mode: 'NS 火車', duration: '約 15 分鐘', advice: 'B1 大廳直接刷 Apple Pay / 信用卡 (OVpay)。', tickets: ['OVpay 刷卡', 'NS 單程票'] }
+        ]
+      },
+      {
+        day: 2, date: '2026/10/08 (四)', cityId: 'amsterdam', city: '北荷蘭省', country: '荷蘭 🇳🇱',
+        title: '荷蘭經典風情・贊斯堡風車村與沃倫丹漁村',
+        summary: '參觀贊斯堡傳統風車村、木鞋與起司工坊，午後赴北海傳統沃倫丹漁村品嚐新鮮炸魚塊。',
+        coverImg: 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=800&q=80',
+        highlights: ['Zaanse Schans 贊斯堡風車村', 'Volendam 沃倫丹漁村'],
+        foodPicks: [
+          { name: 'Volendam 港邊炸魚塊', loc: '沃倫丹港口', desc: '現炸金黃多汁無骨魚塊沾特製美乃滋。' }
+        ],
+        events: [
+          { time: '09:10', location: 'Amsterdam Central Station', type: 'transit', note: '搭火車前往風車村', details: '搭乘往 Uitgeest 方向之 Sprinter 列車。', tips: '請認明 Sprinter 列車才會停靠風車村站。' },
+          { time: '10:07', location: 'Zaanse Schans 風車村', type: 'sightseeing', note: '參觀木鞋與起司工廠', details: '開放式博物館村落，保留 18 世紀風車。', tips: '園區免費，進特定風車內部約 €5。河邊風大請注意帽子！' },
+          { time: '13:59', location: 'Volendam Centrum 沃倫丹漁村', type: 'sightseeing', note: '漫步港灣享用海鮮', details: '傳統漁村風情與紀念品街。', tips: '港口餵海鷗請注意，海鷗搶食非常兇猛。' }
+        ],
+        transits: [
+          { from: 'Central Station', to: 'Zaanse Schans', mode: 'NS Sprinter 火車', duration: '17 分鐘', advice: '出站步行 15 分鐘跨過大橋即達景區。', tickets: ['ARTT 區域卡'] },
+          { from: 'Zaanse Schans', to: 'Volendam', mode: 'EBS 391 轉 316 公車', duration: '45 分鐘', advice: '使用 ARTT 一日券全程包含。', tickets: ['ARTT 日票'] }
+        ]
+      },
+      {
+        day: 3, date: '2026/10/09 (五)', cityId: 'amsterdam', city: '羊角村', country: '荷蘭 🇳🇱',
+        title: '綠色威尼斯・羊角村 (Giethoorn) 水鄉運河體驗',
+        summary: '造訪無車童話村落羊角村。租用無噪音電動小船穿梭運河，欣賞蘆葦屋頂小屋與木橋。',
+        coverImg: 'https://images.unsplash.com/photo-1584003564911-a7a321c84e1c?auto=format&fit=crop&w=800&q=80',
+        highlights: ['Steenwijk 車站', '羊角村 Giethoorn'],
+        foodPicks: [
+          { name: 'Grand Café 蘋果派', loc: '羊角村運河旁', desc: '坐在蘆葦屋頂小屋旁享用鮮奶油熱蘋果派。' }
+        ],
+        events: [
+          { time: '09:10', location: 'Amsterdam Central Station', type: 'transit', note: '搭 IC 火車至 Steenwijk', details: '行經荷蘭內陸平原。', tips: '車廂分靜音區 (Silence Zone)，請勿大聲喧嘩。' },
+          { time: '11:16', location: 'Giethoorn 羊角村', type: 'sightseeing', note: '自駕電動小船遊運河', details: '無公路村落，居民以船代步。', tips: '租電動船約 €20-30/hr。請放慢船速避開橋墩，切勿闖入私人生育花園！' }
+        ],
+        transits: [
+          { from: 'Central Station', to: 'Steenwijk Station', mode: 'NS IC 城際火車', duration: '1 小時 30 分', advice: '提前用 NS App 查轉乘資訊 (常於 Zwolle 轉)。', tickets: ['NS 來回票'] },
+          { from: 'Steenwijk Station', to: '羊角村', mode: '70 / 270 路公車', duration: '18 分鐘', advice: 'Dominee Hylkemaweg 站下車即達村口。', tickets: ['OVpay 刷卡'] }
+        ]
+      },
+      {
+        day: 4, date: '2026/10/10 (六)', cityId: 'brussels', city: '布魯塞爾', country: '比利時 🇧🇪',
+        title: '跨國前往比利時・布魯塞爾古典大廣場巡禮',
+        summary: '搭乘跨國高鐵前往比利時首都布魯塞爾。漫步歐洲最美大廣場、看尿尿小童並品嚐鬆餅與淡菜鍋。',
+        coverImg: 'https://images.unsplash.com/photo-1559563458-527698bf5295?auto=format&fit=crop&w=800&q=80',
+        highlights: ['布魯塞爾中央車站', 'Grand Place 布魯塞爾大廣場'],
+        foodPicks: [
+          { name: 'Chez Léon 百年燉淡菜', loc: '海鮮街', desc: '搭配金黃炸薯條與修道院白啤酒。' }
+        ],
+        events: [
+          { time: '09:20', location: 'Amsterdam Central Station', type: 'transit', note: '搭 Eurostar 跨國高鐵', details: '跨越荷比邊境前往比利時。', tips: 'Eurostar 需提前劃位，車上有 Wi-Fi。' },
+          { time: '12:23', location: 'Grand Place 布魯塞爾大廣場', type: 'sightseeing', note: '遊覽大廣場與尿尿小童', details: '世界文化遺產，黃金公會建築包圍。', tips: '廣場全程為凹凸石板路，嚴禁高跟鞋！尿尿小童雕像較小，拍照注意財物。' }
+        ],
+        transits: [
+          { from: 'Amsterdam Centraal', to: 'Bruxelles-Central', mode: 'Eurostar 高鐵 / ICD', duration: '1 小時 50 分', advice: '若至 Midi 站可免費轉乘 IC 列車至 Central 站。', tickets: ['Eurostar 官方車票'] }
+        ]
+      },
+      {
+        day: 5, date: '2026/10/11 (日)', cityId: 'brussels', city: '布魯日', country: '比利時 🇧🇪',
+        title: '北方威尼斯・布魯日古城與市政廳日遊',
+        summary: '搭火車前往北方威尼斯布魯日，參觀哥德式市政廳、聖血教堂與鐘樓，乘船漫遊運河。',
+        coverImg: 'https://images.unsplash.com/photo-1580974928064-f0aeef70895a?auto=format&fit=crop&w=800&q=80',
+        highlights: ['Stadhuis Brugge 布魯日市政廳', '愛之湖公園'],
+        foodPicks: [
+          { name: 'Chez Albert 草莓巧克力鬆餅', loc: '鐘樓旁', desc: '排隊名店，淋滿熔岩比利時巧克力！' }
+        ],
+        events: [
+          { time: '08:00', location: 'Stadhuis Brugge 布魯日市政廳', type: 'sightseeing', note: '參觀市政廳、聖血教堂與鐘樓', details: '保存完整的中古世紀古城。', tips: '登鐘樓需爬 366 階狹窄梯。運河搭船 (€12) 是極佳體驗！' },
+          { time: '16:04', location: 'Bruxelles-Central', type: 'transit', note: '搭火車返回市區', details: '享用晚餐。', tips: '【票券優惠】週末搭國鐵買 Weekend Ticket 享 50% 折扣！' }
+        ],
+        transits: [
+          { from: 'Bruxelles-Central', to: 'Brugge Station', mode: 'SNCB 比鐵 IC 火車', duration: '約 1 小時', advice: '班次密集 (每 20 分鐘一班)。出站步行 15 分鐘至大廣場。', tickets: ['SNCB Weekend Ticket (5折)'] }
+        ]
+      },
+      {
+        day: 6, date: '2026/10/12 (一)', cityId: 'paris', city: '巴黎', country: '法國 🇫🇷',
+        title: '跨國前往花都巴黎・經典地標與時尚老佛爺百貨',
+        summary: '搭 Eurostar 高鐵直達巴黎。巡禮凱旋門、香榭麗舍大道、夏樂宮拍鐵塔，老佛爺百貨看夜景。',
+        coverImg: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80',
+        highlights: ['Arc de Triomphe 凱旋門', 'Champs-Élysées', 'Eiffel Tower', 'Galeries Lafayette'],
+        foodPicks: [
+          { name: 'Pierre Hermé 馬卡龍', loc: '香榭麗舍', desc: '玫瑰、荔枝與覆盆子組合的天堂口感。' }
+        ],
+        events: [
+          { time: '08:00', location: 'Bruxelles-Midi', type: 'transit', note: '搭高鐵跨國前往巴黎', details: '高速穿過法比平原。', tips: '請提前 30 分鐘抵達車站月台。' },
+          { time: '14:27', location: 'Arc de Triomphe 凱旋門', type: 'sightseeing', note: '登上頂樓俯瞰大道', details: '拿破崙紀念大捷而建。', tips: '走地下通道 (Passage) 才能安全到達正下方，切勿穿馬路！' },
+          { time: '16:58', location: 'Eiffel Tower 艾菲爾鐵塔', type: 'sightseeing', note: '戰神廣場公園賞塔', details: '巴黎最著名地標。', tips: '登塔務必提前官網預約！整點有 5 分鐘閃爍燈光秀。' },
+          { time: '19:35', location: 'Galeries Lafayette 老佛爺百貨', type: 'shopping', note: '頂樓露台觀賞巴黎夜景', details: '精品購物與退稅中心。', tips: '免費前往 8 樓頂樓露台 (Rooftop)，無遮蔽俯瞰鐵塔夜景！' }
+        ],
+        transits: [
+          { from: 'Gare du Nord', to: 'Touring Hotel', mode: '巴黎地鐵 Line 7', duration: '10 分鐘', advice: 'Le Peletier 站下車即達。', tickets: ['Navigo Easy 卡'] }
+        ]
+      },
+      {
+        day: 7, date: '2026/10/13 (二)', cityId: 'paris', city: '巴黎', country: '法國 🇫🇷',
+        title: '巴黎藝術殿堂・羅浮宮、奧塞與聖心堂巡禮',
+        summary: '參觀羅浮宮鎮館三寶、杜樂麗花園、奧塞印象派大師畫作、聖母院，傍晚登蒙馬特聖心堂看日落。',
+        coverImg: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=800&q=80',
+        highlights: ['Musée du Louvre 羅浮宮', 'Musée d\'Orsay 奧塞', 'Sacré-Cœur 聖心堂'],
+        foodPicks: [
+          { name: '蒙馬特焗烤洋蔥湯', loc: '聖心堂周邊', desc: '秋日爬山後暖心暖胃的首選。' }
+        ],
+        events: [
+          { time: '09:14', location: 'Musée du Louvre 羅浮宮', type: 'sightseeing', note: '參觀金字塔與鎮館三寶', details: '全球最大藝術博物館。', tips: '【警告】必須提前官網預約時段，否則無法進場！看《蒙娜麗莎》防扒手。' },
+          { time: '11:35', location: 'Musée d\'Orsay 奧塞美術館', type: 'sightseeing', note: '參觀梵谷莫內畫作', details: '舊火車站改建，頂樓大鐘熱門打卡。', tips: '嚴禁使用閃光燈與自拍棒。' },
+          { time: '16:15', location: 'Sacré-Cœur 聖心堂', type: 'sightseeing', note: '蒙馬特高地俯瞰巴黎日落', details: '白色拜占庭教堂。', tips: '【高警示】階梯處常有黑人強套「幸運繩」索錢，雙手請插口袋快速繞道！' }
+        ],
+        transits: [
+          { from: '羅浮宮', to: '奧塞美術館', mode: '步行過橋', duration: '12 分鐘', advice: '沿塞納河畔漫步。', tickets: ['免費步行'] },
+          { from: '聖母院', to: '蒙馬特聖心堂', mode: '地鐵 4 線轉 2 線', duration: '25 分鐘', advice: 'Anvers 站下車，可搭纜車 (Funiculaire) 上山。', tickets: ['Navigo Easy'] }
+        ]
+      },
+      {
+        day: 8, date: '2026/10/14 (三)', cityId: 'grindelwald', city: '格林德瓦', country: '瑞士 🇨🇭',
+        title: '跨國前往瑞士阿爾卑斯山・格林德瓦雪山絕景',
+        summary: '搭 TGV Lyria 高鐵至瑞士 Basel，轉列車至因特拉肯，換乘黃色電車抵格林德瓦，入住絕景木屋飯店。',
+        coverImg: 'https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?auto=format&fit=crop&w=800&q=80',
+        highlights: ['Paris Gare de Lyon', 'Grindelwald', 'Hotel Restaurant Fiescherblick'],
+        foodPicks: [
+          { name: 'Hotel Fiescherblick 起司鍋', loc: '格林德瓦飯店', desc: '在景觀餐廳看艾格峰吃瑞士熱起司鍋。' }
+        ],
+        events: [
+          { time: '09:24', location: 'Paris Gare de Lyon', type: 'transit', note: '搭 TGV Lyria 高鐵至 Basel', details: '跨國高鐵，時速 320 km/h。', tips: '隨身備妥護照，邊境海關可能隨機抽查。' },
+          { time: '14:30', location: 'Interlaken Ost 因特拉肯東站', type: 'transit', note: '轉乘 BOB 高山電車', details: '山腳入口樞紐。', tips: '【極重要】BOB 電車於半路分拆！請認明車廂外側「Grindelwald」標示，切勿坐錯前往 Lauterbrunnen 的車廂！' },
+          { time: '15:30', location: 'Hotel Restaurant Fiescherblick Grindelwald', type: 'hotel', note: '入住木屋觀賞艾格峰', details: '極具特色的木屋飯店。', tips: '向櫃檯索取「Visitor Card」免費搭鎮上公車。備妥羽絨大衣。' }
+        ],
+        transits: [
+          { from: 'Paris Gare de Lyon', to: 'Basel SBB', mode: 'TGV Lyria 高鐵', duration: '3 小時 04 分', advice: '需劃位，車上有餐車。', tickets: ['TGV 官方票'] },
+          { from: 'Interlaken Ost', to: 'Grindelwald', mode: 'BOB 高山鐵路', duration: '34 分鐘', advice: '請注意搭乘指定前往 Grindelwald 的車廂。', tickets: ['Swiss Travel Pass (免費)'] }
+        ]
+      },
+      {
+        day: 9, date: '2026/10/15 (四)', cityId: 'grindelwald', city: '菲斯特 (First)', country: '瑞士 🇨🇭',
+        title: '少女峰山麓・格林德瓦 First 冒險與山中湖步道',
+        summary: '搭纜車登上 First 菲斯特，挑戰懸崖天空步道 Cliff Walk，高山健行至巴哈阿爾普湖。',
+        coverImg: 'https://images.unsplash.com/photo-1527668752968-14dc70a27c95?auto=format&fit=crop&w=800&q=80',
+        highlights: ['First Cliff Walk', 'Bachalpsee'],
+        foodPicks: [
+          { name: '瑞士金黃煎薯餅 (Rösti)', loc: 'First 山頂餐廳', desc: '起司培根煎薯餅，補充高山健行體力。' }
+        ],
+        events: [
+          { time: '11:46', location: 'Grindelwald First Cliff Walk', type: 'sightseeing', note: '搭纜車攻頂，體驗 Cliff Walk', details: '懸崖步道與山中湖健行。', tips: 'Cliff Walk 握緊手機相機以免墜谷！健行至湖泊來回 2 小時，請穿防滑鞋。' },
+          { time: '12:54', location: 'Hotel Restaurant Fiescherblick', type: 'sightseeing', note: '享用瑞士高山起司鍋', details: '暖心高山美食體驗。', tips: '起司鍋含白酒，不習慣者可點 Rösti 烤薯餅。' }
+        ],
+        transits: [
+          { from: 'Grindelwald BGF', to: 'First 峰頂', mode: '分段空中纜車', duration: '25 分鐘', advice: '持 Swiss Travel Pass 享 50% 折扣。', tickets: ['Swiss Travel Pass 5折'] }
+        ]
+      },
+      {
+        day: 10, date: '2026/10/16 (五)', cityId: 'grindelwald', city: '少女峰頂', country: '瑞士 🇨🇭',
+        title: '歐洲之巔・艾格快線 (Eiger Express) 攻頂少女峰',
+        summary: '體驗最新 3S 纜車艾格快線飛越艾格峰北壁，換乘齒軌火車登頂 3454m 少女峰頂，參觀冰宮與冰川。',
+        coverImg: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?auto=format&fit=crop&w=800&q=80',
+        highlights: ['Eiger Express', 'Jungfraujoch 少女峰頂'],
+        foodPicks: [
+          { name: '少女峰頂高山辛拉麵', loc: '3454m 觀景台', desc: '在雪山頂端吃熱騰騰泡麵是瑞士經典樂趣！' }
+        ],
+        events: [
+          { time: '09:16', location: 'Eiger Express Station', type: 'transit', note: '搭 3S 纜車直達冰川站', details: '15 分鐘飛越艾格峰北壁。', tips: '纜車極度平穩，包廂有全景玻璃。' },
+          { time: '10:00', location: 'Jungfraujoch Top of Europe 少女峰頂', type: 'sightseeing', note: '參觀觀景台、冰宮與冰川', details: '歐洲最高火車站。', tips: '【高山症警告】海拔高達 3,454m！動作請放緩。冰宮地面極溜，小心行走！' }
+        ],
+        transits: [
+          { from: 'Grindelwald Terminal', to: 'Eigergletscher', mode: 'Eiger Express 纜車', duration: '15 分鐘', advice: '節省大量登頂時間。', tickets: ['少女峰攻頂票'] },
+          { from: 'Eigergletscher', to: 'Jungfraujoch', mode: '紅色齒軌火車', duration: '26 分鐘', advice: '穿越艾格峰山體隧道。', tickets: ['登頂火車票'] }
+        ]
+      },
+      {
+        day: 11, date: '2026/10/17 (六)', cityId: 'zurich', city: '蘇黎世', country: '瑞士 🇨🇭',
+        title: '下山前往金融大都會・蘇黎世舊城區與湖畔巡禮',
+        summary: '搭火車前往瑞士第一大城蘇黎世。漫步班霍夫大街名店、登林登霍夫丘陵俯瞰利馬特河古城。',
+        coverImg: 'https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?auto=format&fit=crop&w=800&q=80',
+        highlights: ['Zürich HB 蘇黎世中央車站', 'Bahnhofstrasse 班霍夫大街'],
+        foodPicks: [
+          { name: '軍火庫餐廳蘇黎世切肉', loc: '舊城區', desc: '古蹟改建，必點白醬切牛肉配薯餅。' }
+        ],
+        events: [
+          { time: '11:54', location: 'Zürich HB 蘇黎世中央車站', type: 'transit', note: '抵達蘇黎世寄放行李', details: '地下層有大型寄物櫃。', tips: '寄物櫃支援信用卡與法郎支付。' },
+          { time: '13:30', location: 'Bahnhofstrasse 班霍夫大街', type: 'sightseeing', note: '奢華大街購物與丘陵俯瞰', details: '全球最昂貴購物街之一。', tips: '林登霍夫山丘是俯瞰古城最佳免費地點！蘇黎世消費高，注意菜單價格。' }
+        ],
+        transits: [
+          { from: 'Grindelwald', to: 'Zürich HB', mode: 'BOB 電車 ➔ SBB IC 高鐵', duration: '2 小時 35 分', advice: '途經圖恩湖景色極美。', tickets: ['Swiss Travel Pass (全含)'] }
+        ]
+      },
+      {
+        day: 12, date: '2026/10/18 (日)', cityId: 'zurich', city: '蘇黎世 ➔ 香港', country: '瑞士 🇨🇭',
+        title: '滿載回憶歸途・蘇黎世機場離境返港',
+        summary: '從蘇黎世中央車站搭火車 10 分鐘直達機場，辦理退稅與托運，經迪拜轉機順利返抵香港。',
+        coverImg: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=800&q=80',
+        highlights: ['Zürich Airport 蘇黎世機場', 'DXB 迪拜轉機', 'HKG 香港國際機場'],
+        foodPicks: [
+          { name: 'Läderach 板塊巧克力', loc: '機場免稅店', desc: '買滿滿堅果與果乾的鮮奶巧克力帶回香港！' }
+        ],
+        events: [
+          { time: '13:30', location: 'Zurich Airport 蘇黎世機場', type: 'airport', note: '辦理退稅與托運行李', details: '搭乘阿聯酋航空返港。', tips: '【退稅提醒】單筆滿 300 CHF 商品，請於 Check-in 前拿退稅單至海關櫃檯蓋章！' },
+          { time: '15:25 (10/19)', location: 'Hong Kong International Airport', type: 'flight', note: '返抵香港圓滿結束', details: '提取行李順利返家。', tips: '祝您 旅途圓滿！' }
+        ],
+        transits: [
+          { from: 'Zürich HB', to: 'Zürich Flughafen', mode: 'SBB 火車', duration: '10 分鐘', advice: '直達機場地下 B1 大廳。', tickets: ['Swiss Travel Pass'] }
+        ]
+      }
+    ];
+
+    // 各國 One Day Pass 與 多人交通票指南
+    const PASSES_GUIDE = [
+      {
+        country: '🇳🇱 荷蘭 (Netherlands)',
+        passes: [
+          { name: 'Amsterdam & Region Travel Ticket (ARTT)', type: '區域 1-3 日券', price: '1日券 €21.00', shareType: '個人票', coverage: '含阿姆斯特丹全市交通 + 機場火車 + 贊斯堡風車村 + 沃倫丹漁村。', howToBuy: '阿姆斯特丹中央車站 NS 售票機購買或官網預訂。' },
+          { name: 'GVB 市區一日券', type: '市區大眾運輸 Pass', price: '24小時 €9.00', shareType: '個人票', coverage: '阿姆斯特丹市區所有 GVB 電車、公車及地鐵無限制搭乘。', howToBuy: '車站自動售票機刷卡購買。' }
+        ]
+      },
+      {
+        country: '🇧🇪 比利時 (Belgium)',
+        passes: [
+          { name: 'Standard Multi (10次跨城火車票)', type: '🌟 多人共用 10 次卡', price: '€102.00', shareType: '👥 多人可共用', coverage: '適用於比利時全境任意兩站間火車，可以兩人同時使用填寫兩行即可！', howToBuy: 'SNCB App 購買數位版或各大火車站櫃檯實體卡。' },
+          { name: 'Weekend Ticket', type: '週末火車 50% 折扣', price: '原價 50% 折扣', shareType: '個人票', coverage: '週五晚上 19:00 後至週日全天於比利時境內往返。', howToBuy: 'SNCB App 或售票機。' }
+        ]
+      },
+      {
+        country: '🇫🇷 法國巴黎 (France / Paris)',
+        passes: [
+          { name: 'Navigo Jour (巴黎 1 日 Pass)', type: '1 日無限搭乘票', price: 'Zone 1-2 €8.65', shareType: '個人票', coverage: '所選 Zone 區域內所有巴黎地鐵、RER 郊區鐵路、公車無限制搭乘。', howToBuy: '儲值於 Navigo Easy 卡內。' },
+          { name: 'Navigo Easy 卡 + Ticket t+ 10 次組', type: '市區輕便搭乘組', price: '空卡 €2 + 10 次數位票 €17.35', shareType: '個人需持卡', coverage: '巴黎市區 (Zone 1) 所有地鐵、公車及蒙馬特聖心堂纜車。', howToBuy: '地鐵站人工櫃檯或自動售票機購買。' }
+        ]
+      },
+      {
+        country: '🇨🇭 瑞士 (Switzerland)',
+        passes: [
+          { name: 'Swiss Half Fare Card (瑞士半價卡)', type: '🌟 瑞士全境 50% 折扣', price: 'CHF 120.00', shareType: '個人實名票', coverage: '全瑞士所有火車、公車、少女峰齒軌火車、Eiger Express 纜車全線享半價！', howToBuy: 'SBB 官網或 Klook 線上購買。' },
+          { name: 'Swiss Travel Pass (STP 瑞士旅行通行證)', type: '火車公車遊船吃到飽', price: '3 日連續約 CHF 244', shareType: '個人實名票', coverage: '全瑞士國鐵、市區公車免費；登少女峰齒軌火車 75 折。', howToBuy: 'SBB 官網或旅遊平台預訂。' }
+        ]
+      }
+    ];
+
+    // 訂票 APP HUB
+    const TRAVEL_APPS_HUB = [
+      {
+        country: '🇨🇭 瑞士 (Switzerland)',
+        apps: [
+          { name: 'SBB Mobile', category: '鐵路與大眾運輸 (必備!)', platform: 'iOS / Android', desc: '瑞士國鐵官方 App。即時查詢火車、纜車月台與班次，可綁定 STP。', link: 'https://www.sbb.ch/en', badge: '核心必備' },
+          { name: 'Jungfrau.ch', category: '少女峰官網', platform: '網頁 / App', desc: '預訂 Eiger Express 艾格快線與少女峰峰頂指定席車票。', link: 'https://www.jungfrau.ch/en-gb/', badge: '官方攻頂' }
+        ]
+      },
+      {
+        country: '🇳🇱 荷蘭 (Netherlands)',
+        apps: [
+          { name: 'NS App', category: '荷蘭國鐵官方 App', platform: 'iOS / Android', desc: '查詢荷蘭全境列車時間表與月台號碼。', link: 'https://www.ns.nl/en', badge: '核心必備' },
+          { name: '9292.nl', category: '荷蘭交通規劃', platform: 'iOS / Android', desc: '跨公車、電車、地鐵與火車的最佳路線工具。', link: 'https://9292.nl/en', badge: '交通神幫手' }
+        ]
+      },
+      {
+        country: '🇫🇷 法國 (France / Paris)',
+        apps: [
+          { name: 'SNCF Connect', category: '法國國鐵 & TGV Lyria', platform: 'iOS / Android', desc: '預訂 Paris 到 Switzerland (TGV Lyria) 高鐵票。', link: 'https://www.sncf-connect.com/en-ch/', badge: '跨國高鐵' },
+          { name: 'Louvre Official Ticket', category: '羅浮宮預約網站', platform: '網頁', desc: '羅浮宮全面實行時段預約制，必須提前預約入場 Time Slot！', link: 'https://www.ticketlouvre.fr/', badge: '務必預約' }
+        ]
+      },
+      {
+        country: '🇧🇪 比利時 (Belgium)',
+        apps: [
+          { name: 'SNCB / NMBS', category: '比利時國鐵 App', platform: 'iOS / Android', desc: '購買布魯塞爾往返布魯日車票，週末享 50% 優惠票價。', link: 'https://www.belgiantrain.be/en', badge: '五折週末票' }
+        ]
+      }
+    ];
+
+
+
+    // 用戶自定義的 Gemini API Key (可選，留空會跑失敗提示，填入真實金鑰即可啟用)
+    const getApiKey = () => ""; 
+
+    async function fetchWithBackoff(url, options, maxRetries = 3) {
+      let delay = 1000;
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          const response = await fetch(url, options);
+          if (response.ok) return response;
+          if (response.status === 429 || response.status >= 500) {
+            await new Promise(r => setTimeout(r, delay));
+            delay *= 2;
+            continue;
+          }
+          return response;
+        } catch (err) {
+          if (i === maxRetries - 1) throw err;
+          await new Promise(r => setTimeout(r, delay));
+          delay *= 2;
+        }
+      }
+    }
+
+    // 文字生文字含 Google 搜尋 (Gemini 3 Flash)
+    async function callGeminiTextWithSearch(promptQuery) {
+      const apiKey = getApiKey();
+      if (!apiKey) return { text: "⚠️ 尚未設定 Gemini API Key。請在程式碼 `getApiKey()` 函式中填入您的金鑰即可啟用 AI 聯網查詢功能。", sources: [] };
+      
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+      const systemPrompt = "Act as an expert, warm, Cantonese/Traditional Chinese speaking Europe trip concierge for C and D traveling through Netherlands, Belgium, France, and Switzerland. Provide clear, well-formatted, and helpful travel advice with real-time accuracy.";
+      
+      const payload = {
+        contents: [{ parts: [{ text: promptQuery }] }],
+        tools: [{ "google_search": {} }],
+        systemInstruction: { parts: [{ text: systemPrompt }] }
+      };
+
+      try {
+        const res = await fetchWithBackoff(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        const candidate = result.candidates?.[0];
+        const text = candidate?.content?.parts?.[0]?.text || "抱歉，Gemini API 暫時未有傳回解答。";
+        
+        let sources = [];
+        const groundingMetadata = candidate?.groundingMetadata;
+        if (groundingMetadata && groundingMetadata.groundingAttributions) {
+          sources = groundingMetadata.groundingAttributions
+            .map(attr => ({ uri: attr.web?.uri, title: attr.web?.title }))
+            .filter(s => s.uri && s.title);
+        }
+        return { text, sources };
+      } catch (err) {
+        return { text: "發生錯誤，無法連結 Gemini AI，請確認網路或 API Key。", sources: [] };
+      }
+    }
+
+    function pcmToWavBlob(pcmInt16Array, sampleRate = 24000) {
+      const buffer = new ArrayBuffer(44 + pcmInt16Array.length * 2);
+      const view = new DataView(buffer);
+      const writeString = (offset, string) => {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      };
+      writeString(0, 'RIFF');
+      view.setUint32(4, 36 + pcmInt16Array.length * 2, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true); // Mono PCM
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeString(36, 'data');
+      view.setUint32(40, pcmInt16Array.length * 2, true);
+      let offset = 44;
+      for (let i = 0; i < pcmInt16Array.length; i++, offset += 2) {
+        view.setInt16(offset, pcmInt16Array[i], true);
+      }
+      return new Blob([buffer], { type: 'audio/wav' });
+    }
+
+    // 文字轉語音 (Gemini 2.5 Flash TTS)
+    async function callGeminiTTS(textToSpeak, voiceName = "Kore") {
+      const apiKey = getApiKey();
+      if (!apiKey) throw new Error("無 API Key");
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+      const payload = {
+        contents: [{ parts: [{ text: textToSpeak }] }],
+        generationConfig: {
+          responseModalities: ["AUDIO"],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voiceName } } }
+        },
+        model: "gemini-2.5-flash-preview-tts"
+      };
+
+      const res = await fetchWithBackoff(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+      const part = result?.candidates?.[0]?.content?.parts?.[0];
+      const audioData = part?.inlineData?.data;
+      if (audioData) {
+        const binaryString = window.atob(audioData);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const pcm16 = new Int16Array(bytes.buffer);
+        const wavBlob = pcmToWavBlob(pcm16, 24000);
+        return URL.createObjectURL(wavBlob);
+      } else {
+        throw new Error("無法生成語音檔");
+      }
+    }
+
+
+    function App() {
+      const [activeTab, setActiveTab] = useState('itinerary');
+      const [selectedDayNumber, setSelectedDayNumber] = useState(null);
+      const [weatherData, setWeatherData] = useState({});
+      const [searchQuery, setSearchQuery] = useState('');
+
+      // AI Chatbot State
+      const [aiQuery, setAiQuery] = useState('');
+      const [aiLoading, setAiLoading] = useState(false);
+      const [aiResponse, setAiResponse] = useState(null);
+
+      // AI TTS State
+      const [ttsLoading, setTtsLoading] = useState(false);
+      const [audioUrl, setAudioUrl] = useState(null);
+
+      const FALLBACK_WEATHER = {
+        amsterdam: { temp: 14, min: 9, max: 16, description: '多雲時晴，微風' },
+        brussels: { temp: 15, min: 10, max: 17, description: '秋高氣爽' },
+        paris: { temp: 16, min: 11, max: 18, description: '晴朗舒適' },
+        grindelwald: { temp: 6, min: -2, max: 9, description: '高山偏冷/降雪' },
+        zurich: { temp: 12, min: 7, max: 14, description: '早晚偏涼' }
+      };
+
+      // 抓取真實天氣與 7 天天氣預報
+      useEffect(() => {
+        const fetchW = async () => {
+          try {
+            const results = {};
+            for (const city of CITIES) {
+              const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&timezone=auto`);
+              if (res.ok) {
+                const d = await res.json();
+                results[city.id] = {
+                  temp: Math.round(d.current_weather.temperature),
+                  min: Math.round(d.daily.temperature_2m_min[0]),
+                  max: Math.round(d.daily.temperature_2m_max[0]),
+                  description: '實時更新',
+                  daily: d.daily.time.slice(0, 7).map((timeStr, idx) => {
+                    const code = d.daily.weathercode[idx];
+                    let icon = '☀️ 晴朗';
+                    if (code > 3) icon = '☁️ 多雲';
+                    if (code > 50) icon = '🌧️ 降雨';
+                    if (code > 70) icon = '❄️ 降雪';
+                    return {
+                      date: timeStr.slice(5),
+                      max: Math.round(d.daily.temperature_2m_max[idx]),
+                      min: Math.round(d.daily.temperature_2m_min[idx]),
+                      rainProb: d.daily.precipitation_probability_max ? d.daily.precipitation_probability_max[idx] : 20,
+                      weatherIcon: icon
+                    };
+                  })
+                };
+              }
+            }
+            setWeatherData(results);
+          } catch(e) {
+            console.warn('Weather load fallback');
+          }
+        };
+        fetchW();
+      }, []);
+
+      const handleAskAI = async (customPrompt) => {
+        const q = customPrompt || aiQuery;
+        if (!q.trim()) return;
+        setAiLoading(true);
+        setAiResponse(null);
+        const res = await callGeminiTextWithSearch(q);
+        setAiResponse(res);
+        setAiLoading(false);
+      };
+
+      const handleSpeakText = async (textToSpeak, voiceName = "Kore") => {
+        if (!getApiKey()) {
+          alert("尚未設定 API Key，無法生成語音。");
+          return;
+        }
+        setTtsLoading(true);
+        setAudioUrl(null);
+        try {
+          const url = await callGeminiTTS(textToSpeak, voiceName);
+          setAudioUrl(url);
+        } catch (err) {
+          alert("語音生成失敗，請確認網路連線或 API Key。");
+        } finally {
+          setTtsLoading(false);
+        }
+      };
+
+      const filteredItinerary = ITINERARY_DATA.filter(item => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+          item.title.toLowerCase().includes(q) ||
+          item.city.toLowerCase().includes(q) ||
+          item.summary.toLowerCase().includes(q) ||
+          item.events.some(e => e.location.toLowerCase().includes(q) || e.note.toLowerCase().includes(q))
+        );
+      });
+
+      const fullDayDetail = ITINERARY_DATA.find(d => d.day === selectedDayNumber);
+
+      return (
+        <div className="min-h-screen pb-16 text-base">
+          {/* 頂部 Header */}
+          <header className="bg-slate-950 border-b border-slate-800 sticky top-0 z-50 backdrop-blur-md bg-opacity-95 shadow-xl">
+            <div className="max-w-7xl mx-auto px-4 py-4">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                      2026/10/07 - 10/18
+                    </span>
+                    <span className="text-slate-300 text-sm font-medium">🧳 旅客：C, D</span>
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-white mt-1 flex items-center gap-2">
+                    歐洲 12 日跨國之旅助手
+                    <span className="text-xs bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold px-2.5 py-1 rounded-md border border-purple-400/50 shadow-md">
+                      ✨ AI 版
+                    </span>
+                  </h1>
+                </div>
+
+                {/* Tab 選單 */}
+                <div className="flex flex-wrap gap-1.5 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+                  <button onClick={() => { setActiveTab('itinerary'); setSelectedDayNumber(null); }} className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'itinerary' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}>
+                    📅 天數總覽
+                  </button>
+                  <button onClick={() => setActiveTab('gemini')} className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'gemini' ? 'bg-purple-600 text-white shadow-lg animate-pulse' : 'text-purple-300 hover:bg-purple-900/50'}`}>
+                    🤖 AI 隨身管家
+                  </button>
+                  <button onClick={() => setActiveTab('food')} className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'food' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}>
+                    🍱 當地美食
+                  </button>
+                  <button onClick={() => setActiveTab('weather')} className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'weather' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}>
+                    ☀️ 多地天氣
+                  </button>
+                  <button onClick={() => setActiveTab('transits')} className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'transits' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}>
+                    🚆 交通票券
+                  </button>
+                  <button onClick={() => setActiveTab('apps')} className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'apps' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-800'}`}>
+                    📱 訂票 App
+                  </button>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <main className="max-w-7xl mx-auto px-4 pt-6">
+
+            {/* TAB 1: 12 天行程與點擊開啟獨頁 */}
+            {activeTab === 'itinerary' && (
+              <div>
+                {selectedDayNumber === null ? (
+                  <div className="space-y-6">
+                    {/* 搜尋列 */}
+                    <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+                      <input
+                        type="text"
+                        placeholder="🔍 搜尋景點、時間點、防坑提醒 (如：羅浮宮, 羊角村, 治安)..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-slate-900 text-slate-100 text-base rounded-xl px-4 py-3 border border-slate-700 focus:outline-none focus:border-indigo-500"
+                      />
+                      <div className="text-sm text-indigo-300 font-bold shrink-0">
+                        💡 點擊任意卡片開啟全景專屬頁面
+                      </div>
+                    </div>
+
+                    {/* 12 天卡片 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {filteredItinerary.map((d) => {
+                        const w = weatherData[d.cityId] || FALLBACK_WEATHER[d.cityId];
+                        return (
+                          <div
+                            key={d.day}
+                            onClick={() => setSelectedDayNumber(d.day)}
+                            className="bg-slate-800/90 border border-slate-700 hover:border-indigo-500 rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-2xl space-y-0 group flex flex-col justify-between"
+                          >
+                            {/* 封面圖片 */}
+                            <div className="relative h-48 w-full overflow-hidden">
+                              <img 
+                                src={d.coverImg} 
+                                alt=""
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                              <div className="absolute top-3 left-3 bg-indigo-600/90 text-white font-extrabold text-sm px-3 py-1 rounded-full backdrop-blur-md">
+                                DAY {d.day} • {d.date}
+                              </div>
+                              <div className="absolute top-3 right-3 bg-slate-950/80 text-emerald-400 font-bold text-sm px-3 py-1 rounded-full backdrop-blur-md">
+                                📍 {d.city}
+                              </div>
+                            </div>
+
+                            <div className="p-5 space-y-3">
+                              <h3 className="text-lg font-bold text-white group-hover:text-indigo-300 transition-colors leading-snug">{d.title}</h3>
+                              <p className="text-sm text-slate-300 line-clamp-2 leading-relaxed">{d.summary}</p>
+
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {d.highlights.slice(0, 3).map((h, i) => (
+                                  <span key={i} className="text-xs bg-slate-900/80 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700">
+                                    {h}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="p-4 bg-slate-900/60 border-t border-slate-700/60 flex items-center justify-between text-sm">
+                              <span className="text-amber-300 font-bold">☀️ {w.temp}°C ({w.description})</span>
+                              <span className="text-indigo-400 font-extrabold flex items-center gap-1">查看完整詳情 ➔</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  // 單獨頁面
+                  fullDayDetail && (
+                    <div className="space-y-6 animate-fadeIn">
+                      {/* 頂部切換列 */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-800/90 p-4 rounded-2xl border border-slate-700 shadow-lg">
+                        <button
+                          onClick={() => setSelectedDayNumber(null)}
+                          className="bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-all"
+                        >
+                          ⬅️ 返回 12 日總覽列表
+                        </button>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            disabled={fullDayDetail.day === 1}
+                            onClick={() => setSelectedDayNumber(fullDayDetail.day - 1)}
+                            className={`text-sm font-bold px-4 py-2.5 rounded-xl border transition-all ${fullDayDetail.day === 1 ? 'opacity-40 bg-slate-800 border-slate-700 text-slate-500' : 'bg-slate-700 border-slate-600 text-white'}`}
+                          >
+                            ◀️ 上一天 (D{fullDayDetail.day - 1})
+                          </button>
+                          <span className="text-sm font-bold text-indigo-300 px-4 py-2 bg-indigo-950 rounded-xl border border-indigo-800">
+                            Day {fullDayDetail.day} / 12
+                          </span>
+                          <button
+                            disabled={fullDayDetail.day === 12}
+                            onClick={() => setSelectedDayNumber(fullDayDetail.day + 1)}
+                            className={`text-sm font-bold px-4 py-2.5 rounded-xl border transition-all ${fullDayDetail.day === 12 ? 'opacity-40 bg-slate-800 border-slate-700 text-slate-500' : 'bg-slate-700 border-slate-600 text-white'}`}
+                          >
+                            下一天 (D{fullDayDetail.day + 1}) ▶️
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 專頁標題與封面圖 */}
+                      <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-900 border border-indigo-500/50 rounded-2xl overflow-hidden shadow-2xl">
+                        <div className="h-64 w-full relative">
+                          <img 
+                            src={fullDayDetail.coverImg} 
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
+                          <div className="absolute bottom-4 left-6 right-6 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="bg-indigo-600 text-white text-sm font-extrabold px-3 py-1 rounded-full">
+                                DAY {fullDayDetail.day} • {fullDayDetail.date}
+                              </span>
+                              <span className="bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 text-sm px-3 py-1 rounded-full font-bold backdrop-blur-md">
+                                📍 {fullDayDetail.country} • {fullDayDetail.city}
+                              </span>
+                            </div>
+                            <h2 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">{fullDayDetail.title}</h2>
+                          </div>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                          <p className="text-base text-slate-200 leading-relaxed bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                            📝 <strong>行程撮要：</strong> {fullDayDetail.summary}
+                          </p>
+
+                          {/* ✨ AI 語音導覽與明信片整合區塊 */}
+                          <div className="flex flex-wrap gap-3 bg-purple-950/40 p-4 rounded-xl border border-purple-500/30">
+                            <button
+                              disabled={ttsLoading}
+                              onClick={() => handleSpeakText(`你好 C 同D！今日係 Day ${fullDayDetail.day} ${fullDayDetail.city}行程。重點包含：${fullDayDetail.summary}。祝你哋今日旅程愉快！`)}
+                              className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-md transition-all"
+                            >
+                              🔊 {ttsLoading ? "正在生成 AI 語音簡報..." : "收聽當日 AI 語音導覽 (Gemini TTS)"}
+                            </button>
+                          </div>
+
+                          {/* 播音樂組件 */}
+                          {audioUrl && (
+                            <div className="bg-purple-900/60 p-3 rounded-xl border border-purple-500/50 flex items-center gap-3">
+                              <span className="text-xs text-purple-200 font-bold">▶️ 播報語音：</span>
+                              <audio src={audioUrl} controls autoPlay className="w-full h-9 rounded-lg" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 專頁雙欄數據 */}
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        {/* 左側：氣候 + 美食 */}
+                        <div className="lg:col-span-4 space-y-6">
+                          {/* 氣候卡 */}
+                          <div className="bg-slate-800/90 border border-slate-700 rounded-2xl p-5 space-y-3">
+                            <h4 className="text-base font-bold text-amber-300 border-b border-slate-700 pb-2">☀️ 當日城市氣候預報</h4>
+                            {(() => {
+                              const w = weatherData[fullDayDetail.cityId] || FALLBACK_WEATHER[fullDayDetail.cityId];
+                              return (
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex justify-between items-center font-bold text-white text-lg">
+                                    <span>{fullDayDetail.city}</span>
+                                    <span className="text-2xl font-extrabold text-amber-400">{w.temp}°C</span>
+                                  </div>
+                                  <div className="bg-slate-900 p-3 rounded-xl text-slate-300 border border-slate-800">
+                                    最高/最低溫：{w.min}°C ~ {w.max}°C ({w.description})
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+
+                          {/* 本日美食 (含圖片) */}
+                          {fullDayDetail.foodPicks && (
+                            <div className="bg-gradient-to-b from-orange-950/40 to-slate-900 border border-orange-500/40 rounded-2xl p-5 space-y-4">
+                              <h4 className="text-base font-bold text-orange-400 border-b border-slate-800 pb-2">🍱 本日途經必吃美食</h4>
+                              <div className="space-y-4">
+                                {fullDayDetail.foodPicks.map((food, fIdx) => (
+                                  <div key={fIdx} className="bg-slate-800/90 rounded-xl p-4 space-y-2 border border-slate-700">
+                                    <div className="flex justify-between items-center text-sm font-bold text-amber-200">
+                                      <span className="text-base">{food.name}</span>
+                                      <span className="text-xs text-slate-400">{food.loc}</span>
+                                    </div>
+                                    <p className="text-sm text-slate-300 leading-relaxed">{food.desc}</p>
+                                    <a
+                                      href={getGoogleMapUrl(`${food.name} ${food.loc}`)}
+                                      target="_blank"
+                                      className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-400 hover:text-orange-300 bg-orange-950/80 px-3 py-1.5 rounded-lg border border-orange-800 mt-1"
+                                    >
+                                      📍 尋找此美食地點 (Google Maps)
+                                    </a>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 右側：精確時間節點 + Google Maps 導航 + 防坑提醒 */}
+                        <div className="lg:col-span-8 space-y-6">
+                          {/* 時間表與注意事項 */}
+                          <div className="bg-slate-800/90 border border-slate-700 rounded-2xl p-5 sm:p-6 space-y-5">
+                            <h3 className="text-lg font-bold text-white border-b border-slate-700 pb-3">⏰ 精確時間行程安排 & 景點直達導航</h3>
+                            <div className="space-y-4">
+                              {fullDayDetail.events.map((evt, idx) => (
+                                <div key={idx} className="bg-slate-900/90 border border-slate-700/80 rounded-xl p-4 sm:p-5 space-y-3">
+                                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                                    <div className="flex items-center gap-2.5">
+                                      <span className="bg-indigo-600 text-white font-mono font-extrabold text-sm px-3 py-1 rounded-md shrink-0">
+                                        {evt.time}
+                                      </span>
+                                      <strong className="text-base sm:text-lg font-bold text-white">{evt.location}</strong>
+                                    </div>
+                                    
+                                    {/* Google Maps 導航按鈕 */}
+                                    <a
+                                      href={getGoogleMapUrl(evt.location)}
+                                      target="_blank"
+                                      className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold px-3.5 py-1.5 rounded-xl shadow-md transition-all shrink-0"
+                                    >
+                                      📍 打開 Google Map 導航
+                                    </a>
+                                  </div>
+
+                                  <p className="text-sm text-slate-200 leading-relaxed">📌 <strong>活動詳情：</strong> {evt.details}</p>
+
+                                  {evt.tips && (
+                                    <div className="bg-amber-950/50 border border-amber-500/40 rounded-xl p-3.5 text-sm text-amber-200 leading-relaxed space-y-1">
+                                      <strong className="text-amber-300 block">⚠️ 景點注意事項與防坑提醒：</strong>
+                                      <span>{evt.tips}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* 交通 */}
+                          <div className="bg-slate-800/90 border border-slate-700 rounded-2xl p-5 sm:p-6 space-y-4">
+                            <h3 className="text-lg font-bold text-white border-b border-slate-700 pb-3">🚆 本日點對點交通接駁與轉乘指引</h3>
+                            <div className="space-y-4">
+                              {fullDayDetail.transits.map((transit, tIdx) => (
+                                <div key={tIdx} className="bg-slate-900/90 border border-slate-700/80 rounded-xl p-4 space-y-2.5 text-sm">
+                                  <div className="font-bold text-slate-100 flex items-center gap-2 text-base">
+                                    <span className="text-indigo-300">{transit.from}</span> ➔ <span className="text-emerald-300">{transit.to}</span>
+                                  </div>
+                                  <div className="text-slate-300"><strong>交通方式：</strong> {transit.mode} ({transit.duration})</div>
+                                  <p className="bg-slate-800 p-3 rounded-xl text-slate-300 leading-relaxed">💡 <strong>轉乘指引：</strong> {transit.advice}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+
+            {/* TAB 2: AI 管家 */}
+            {activeTab === 'gemini' && (
+              <div className="space-y-6">
+                {/* 管家 Banner */}
+                <div className="bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 p-6 rounded-2xl border border-purple-500/50 shadow-2xl space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-purple-600 text-white font-extrabold text-xs px-3 py-1 rounded-full uppercase">
+                      Gemini 3 Flash + Grounded Search
+                    </span>
+                  </div>
+                  <h2 className="text-2xl font-extrabold text-white">🤖 Gemini 歐陸行程隨身管家 & 語音助手</h2>
+                  <p className="text-sm text-purple-200/90 leading-relaxed">
+                    您與 D 在歐洲旅途中的智慧大腦！支援 Google 搜尋實時聯網，回答景點最新規定、下雨備案、美食推薦，並為您朗讀當地語音！(需在程式中提供 API Key)
+                  </p>
+                </div>
+
+                {/* 快搜快捷鍵提示 */}
+                <div className="space-y-2">
+                  <span className="text-xs text-slate-400 font-bold block">💡 快速諮詢熱點 (一鍵發問)：</span>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => handleAskAI("請為 Day 7 巴黎行程提供雨天備案與室內藝術館替代方案")}
+                      className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-purple-300 px-3 py-2 rounded-xl"
+                    >
+                      🌧️ 巴黎/羊角村雨天備案建議
+                    </button>
+                    <button
+                      onClick={() => handleAskAI("請列出在荷蘭與法國巴黎最常用的 5 句點餐問路法語/荷蘭語對照")}
+                      className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-emerald-300 px-3 py-2 rounded-xl"
+                    >
+                      🗣️ 點餐問路法文與荷蘭文
+                    </button>
+                    <button
+                      onClick={() => handleAskAI("少女峰觀景台高山症應變注意事項與防寒穿搭")}
+                      className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-amber-300 px-3 py-2 rounded-xl"
+                    >
+                      🏔️ 少女峰高山防寒與安全指南
+                    </button>
+                  </div>
+                </div>
+
+                {/* 輸入框 */}
+                <div className="bg-slate-800/90 p-4 rounded-2xl border border-slate-700 space-y-3 shadow-xl">
+                  <textarea
+                    rows="3"
+                    placeholder="輸入任何有關歐洲行程、交通、退稅、美食或語言的問題..."
+                    value={aiQuery}
+                    onChange={(e) => setAiQuery(e.target.value)}
+                    className="w-full bg-slate-900 text-white text-sm rounded-xl p-3 border border-slate-700 focus:outline-none focus:border-purple-500"
+                  />
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-slate-400">✨ 自動使用 Google 地圖與即時搜尋技術驗證</span>
+                    <button
+                      disabled={aiLoading}
+                      onClick={() => handleAskAI()}
+                      className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm px-5 py-2.5 rounded-xl shadow-lg transition-all"
+                    >
+                      {aiLoading ? "Gemini 正在搜尋解答..." : "發問 Gemini AI"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* AI 回答渲染 */}
+                {aiResponse && (
+                  <div className="bg-slate-900/90 border border-purple-500/40 p-6 rounded-2xl space-y-4 shadow-2xl">
+                    <h3 className="text-lg font-bold text-purple-300 border-b border-slate-800 pb-2">💡 Gemini AI 管家解答：</h3>
+                    <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-line">
+                      {aiResponse.text}
+                    </div>
+
+                    {/* Grounding 參考來源 */}
+                    {aiResponse.sources && aiResponse.sources.length > 0 && (
+                      <div className="pt-3 border-t border-slate-800 space-y-2">
+                        <span className="text-xs font-bold text-slate-400 block">🌐 參考即時搜尋來源：</span>
+                        <div className="flex flex-wrap gap-2">
+                          {aiResponse.sources.map((s, idx) => (
+                            <a
+                              key={idx}
+                              href={s.uri}
+                              target="_blank"
+                              className="text-xs text-indigo-400 hover:underline bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700"
+                            >
+                              🔗 {s.title || s.uri}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 一鍵語音朗讀回答 */}
+                    <div className="pt-2">
+                      <button
+                        disabled={ttsLoading}
+                        onClick={() => handleSpeakText(aiResponse.text.slice(0, 200))}
+                        className="text-xs bg-purple-950 text-purple-300 border border-purple-800 px-3 py-1.5 rounded-lg font-bold hover:bg-purple-900"
+                      >
+                        🔊 語音朗讀這段摘要 (Gemini TTS)
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 當地實用語音 */}
+                <div className="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 space-y-4">
+                  <h3 className="text-lg font-bold text-white border-b border-slate-700 pb-2">🗣️ 當地實用對話 AI 真人朗讀幫手 (Gemini TTS)</h3>
+                  <p className="text-xs text-slate-300">點擊以下句子，AI 會發出標準當地語言發音：</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <button onClick={() => handleSpeakText("Bonjour, une table pour deux s'il vous plaît", "Kore")} className="bg-slate-900 hover:bg-slate-950 p-3 rounded-xl border border-slate-700 text-left text-xs space-y-1">
+                      <strong className="text-amber-300 block">🇫🇷 法國巴黎點餐</strong>
+                      <span className="text-white block font-mono">"Bonjour, une table pour deux s'il vous plaît."</span>
+                      <span className="text-slate-400">(你好，請給我一張兩位檯)</span>
+                    </button>
+                    <button onClick={() => handleSpeakText("Een biertje alstublieft", "Puck")} className="bg-slate-900 hover:bg-slate-950 p-3 rounded-xl border border-slate-700 text-left text-xs space-y-1">
+                      <strong className="text-emerald-300 block">🇳🇱 荷蘭/比利時點啤酒</strong>
+                      <span className="text-white block font-mono">"Een biertje alstublieft."</span>
+                      <span className="text-slate-400">(請給我一杯啤酒，謝謝)</span>
+                    </button>
+                    <button onClick={() => handleSpeakText("Grüezi, wo ist die Toilette bitte?", "Zephyr")} className="bg-slate-900 hover:bg-slate-950 p-3 rounded-xl border border-slate-700 text-left text-xs space-y-1">
+                      <strong className="text-sky-300 block">🇨🇭 瑞士問洗手間</strong>
+                      <span className="text-white block font-mono">"Grüezi, wo ist die Toilette bitte?"</span>
+                      <span className="text-slate-400">(你好，請問洗手間在哪裡？)</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* TAB 3: 當地美食 */}
+            {activeTab === 'food' && (
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-orange-950/60 to-slate-900 p-5 rounded-2xl border border-orange-500/40">
+                  <h2 className="text-xl font-bold text-white">🍱 歐洲 4 國美食地圖與必吃街頭小吃</h2>
+                </div>
+                <div className="space-y-8">
+                  {LOCAL_FOOD_GUIDE.map((cg, idx) => (
+                    <div key={idx} className="space-y-4">
+                      <h3 className="text-lg font-bold text-amber-300 border-b border-slate-800 pb-2">{cg.country}</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {cg.foodItems.map((f, fIdx) => (
+                          <div key={fIdx} className="bg-slate-800/90 border border-slate-700 rounded-2xl overflow-hidden shadow-lg space-y-0 flex flex-col justify-between">
+                            <div className="h-48 w-full overflow-hidden">
+                              <img src={f.img} alt="" className="w-full h-full object-cover" />
+                            </div>
+                            <div className="p-5 space-y-3">
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold text-white text-lg">{f.name}</span>
+                                <span className="text-emerald-400 font-mono text-base font-bold bg-slate-900 px-3 py-1 rounded-lg border border-slate-700">{f.price}</span>
+                              </div>
+                              <p className="text-sm text-slate-300 leading-relaxed">{f.desc}</p>
+                              <div className="text-xs text-amber-200 bg-slate-900 p-3 rounded-xl border border-slate-800">📍 推薦打卡餐廳：{f.recommend}</div>
+                              <a
+                                href={getGoogleMapUrl(`${f.name} ${f.recommend}`)}
+                                target="_blank"
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-400 bg-orange-950/80 px-3.5 py-2 rounded-xl border border-orange-800 w-full justify-center"
+                              >
+                                📍 Google Maps 尋找此美食店家
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: 天氣預報 */}
+            {activeTab === 'weather' && (
+              <div className="space-y-6">
+                <div className="bg-slate-800/80 p-5 rounded-2xl border border-slate-700">
+                  <h2 className="text-xl font-bold text-white">☀️ 5 大停留城市 7 天天氣圖鑑預報</h2>
+                  <p className="text-xs text-slate-400 mt-1">即時連線未來 7 天降雨機率與高低溫，幫您輕鬆安排晴天戶外與雨天室內行程。</p>
+                </div>
+
+                <div className="space-y-6">
+                  {CITIES.map((c) => {
+                    const w = weatherData[c.id] || FALLBACK_WEATHER[c.id];
+                    return (
+                      <div key={c.id} className="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 space-y-4 shadow-lg">
+                        <div className="flex flex-wrap items-center justify-between border-b border-slate-700 pb-3">
+                          <div>
+                            <span className="text-xs text-indigo-400 font-bold">{c.country}</span>
+                            <h3 className="text-xl font-bold text-white">{c.name}</h3>
+                          </div>
+                          <div className="text-2xl font-extrabold text-amber-400">目前：{w.temp}°C</div>
+                        </div>
+
+                        {w.daily ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3 pt-2">
+                            {w.daily.map((dayItem, dIdx) => (
+                              <div key={dIdx} className="bg-slate-900/90 p-3 rounded-xl border border-slate-700/80 text-center space-y-1.5">
+                                <span className="text-xs text-slate-400 font-bold block">{dayItem.date}</span>
+                                <span className="text-base font-bold block">{dayItem.weatherIcon}</span>
+                                <span className="text-xs font-bold text-slate-200 block">{dayItem.min}°C ~ {dayItem.max}°C</span>
+                                <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold inline-block ${dayItem.rainProb > 40 ? 'bg-sky-950 text-sky-300 border border-sky-700' : 'text-slate-400'}`}>
+                                  ☔ {dayItem.rainProb}%
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-slate-400">正在獲取 7 天天氣資料...</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: 交通攻略 */}
+            {activeTab === 'transits' && (
+              <div className="space-y-6">
+                <div className="bg-slate-800/80 p-5 rounded-2xl border border-slate-700">
+                  <h2 className="text-xl font-bold text-white">🚆 跨國與鐵路接駁全攻略</h2>
+                </div>
+                
+                {/* 跨國高鐵提示 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-slate-200">
+                  <div className="bg-slate-800/90 border border-slate-700 p-6 rounded-2xl space-y-3 shadow-lg">
+                    <strong className="text-indigo-300 text-lg block">🇳🇱 荷蘭 & 🇧🇪 比利時</strong>
+                    <p>• 荷蘭大眾運輸支援 <strong>OVpay</strong>，使用 Apple Pay 或信用卡直接感應進出站。</p>
+                    <p>• 阿姆斯特丹往布魯塞爾可搭 Eurostar 高鐵 (需劃位) 或 EuroCity Direct。</p>
+                    <p>• 週末搭比利時國鐵可買 <strong>Weekend Ticket</strong> (5折優惠)。</p>
+                  </div>
+                  <div className="bg-slate-800/90 border border-slate-700 p-6 rounded-2xl space-y-3 shadow-lg">
+                    <strong className="text-emerald-300 text-lg block">🇫🇷 法國 & 🇨🇭 瑞士</strong>
+                    <p>• 巴黎前往瑞士搭乘 <strong>TGV Lyria</strong> 高鐵 ( Paris Gare de Lyon ➔ Basel SBB)。</p>
+                    <p>• 前往格林德瓦搭 BOB 列車時，認明車廂外「Grindelwald」標示（於半路分拆）。</p>
+                    <p>• Grindelwald Terminal 搭乘最新 <strong>Eiger Express</strong> 3S 纜車 15 分鐘直達冰川站。</p>
+                  </div>
+                </div>
+
+                {/* 各國套票 */}
+                <div className="space-y-8 pt-4">
+                  {PASSES_GUIDE.map((countryGroup, cIdx) => (
+                    <div key={cIdx} className="space-y-4">
+                      <h3 className="text-xl font-extrabold text-amber-300 border-b border-slate-800 pb-2">
+                        {countryGroup.country}
+                      </h3>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {countryGroup.passes.map((pass, pIdx) => (
+                          <div key={pIdx} className="bg-slate-800/90 border border-slate-700 hover:border-emerald-500/60 rounded-2xl p-6 flex flex-col justify-between space-y-4 shadow-xl transition-all">
+                            <div className="space-y-3">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold px-3 py-1 rounded-full">
+                                  {pass.type}
+                                </span>
+                                <span className="text-xs font-mono font-bold text-amber-300 bg-slate-900 px-3 py-1 rounded-lg border border-slate-700">
+                                  {pass.shareType}
+                                </span>
+                              </div>
+                              <h4 className="text-xl font-extrabold text-white">{pass.name}</h4>
+                              <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 text-sm font-bold text-emerald-400">
+                                💰 價格與方案：{pass.price}
+                              </div>
+                              <p className="text-sm text-slate-200 leading-relaxed">
+                                🗺️ <strong>適用範圍：</strong> {pass.coverage}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 6: APPS */}
+            {activeTab === 'apps' && (
+              <div className="space-y-6">
+                <div className="bg-slate-800/80 p-5 rounded-2xl border border-slate-700">
+                  <h2 className="text-xl font-bold text-white">📱 當地 App & 票券預訂官網</h2>
+                </div>
+                <div className="space-y-8">
+                  {TRAVEL_APPS_HUB.map((group, idx) => (
+                    <div key={idx} className="space-y-4">
+                      <h3 className="text-base font-bold text-indigo-300">{group.country}</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {group.apps.map((app, aIdx) => (
+                          <div key={aIdx} className="bg-slate-800/90 border border-slate-700 p-5 rounded-2xl space-y-3 shadow-lg">
+                            <span className="text-xs bg-sky-500/20 text-sky-300 px-3 py-1 rounded-full border border-sky-500/30 font-bold">{app.badge}</span>
+                            <h4 className="font-bold text-white text-base">{app.name}</h4>
+                            <p className="text-sm text-slate-300">{app.desc}</p>
+                            <a href={app.link} target="_blank" className="text-sm text-indigo-400 font-bold inline-block pt-1">🔗 前往官方網站 ➔</a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </main>
+
+          <footer className="max-w-7xl mx-auto px-4 mt-12 pt-6 border-t border-slate-800 text-center text-sm text-slate-400">
+            歐洲 12 日跨國之旅助手 • 單檔完美整合版 • 祝 C & D 旅途愉快！
+          </footer>
+        </div>
+      );
+    }
+
+    // 將 App 掛載到 root
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
