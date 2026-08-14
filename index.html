@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HK Live Bus Arrivals (KMB & CTB)</title>
+    <title>香港即時巴士路線 (九巴 & 城巴)</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,7 +15,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        /* Custom Animations */
+        /* 自訂動畫 */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -28,7 +28,7 @@
         }
         .slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
-        /* Map overriding */
+        /* 地圖樣式覆蓋 */
         #map {
             height: 250px;
             width: 100%;
@@ -36,6 +36,7 @@
             border-radius: 0.75rem;
         }
 
+        /* 隱藏滾動條 */
         ::-webkit-scrollbar {
             width: 0px;
             background: transparent;
@@ -44,7 +45,7 @@
         .pulse-dot {
             width: 14px;
             height: 14px;
-            background-color: #3b82f6; /* Blue for User */
+            background-color: #3b82f6; 
             border-radius: 50%;
             box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
             animation: pulse-animation 1.5s infinite cubic-bezier(0.66, 0, 0, 1);
@@ -58,14 +59,14 @@
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen flex flex-col">
 
-    <!-- App Header -->
+    <!-- 頂部導航 -->
     <header class="bg-gradient-to-r from-red-600 to-yellow-500 text-white p-4 shadow-md sticky top-0 z-20">
         <div class="max-w-3xl mx-auto flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <i data-lucide="bus" class="w-6 h-6"></i>
                 <div>
-                    <h1 class="text-xl font-bold tracking-wide leading-tight">HK Bus Live</h1>
-                    <p class="text-[10px] text-white opacity-90 font-medium">KMB & Citybus via Data.gov.hk</p>
+                    <h1 class="text-xl font-bold tracking-wide leading-tight">香港即時巴士</h1>
+                    <p class="text-[10px] text-white opacity-90 font-medium">九巴及城巴即時數據 (Data.gov.hk)</p>
                 </div>
             </div>
             <button id="refreshBtn" class="p-2 bg-black bg-opacity-20 hover:bg-opacity-30 rounded-full transition-colors hidden">
@@ -74,58 +75,58 @@
         </div>
     </header>
 
-    <!-- Main Content -->
+    <!-- 主內容區 -->
     <main class="flex-grow flex flex-col max-w-3xl mx-auto w-full p-4 relative" id="appContent">
         
-        <!-- INITIAL STATE -->
+        <!-- 初始狀態 -->
         <div id="initialState" class="flex flex-col items-center justify-center flex-grow text-center fade-in mt-12">
             <div class="bg-blue-100 p-6 rounded-full mb-6 text-blue-600">
                 <i data-lucide="map-pin" class="w-12 h-12"></i>
             </div>
-            <h2 class="text-2xl font-bold mb-2 text-gray-800">Find KMB & CTB Stops</h2>
-            <p class="text-gray-500 mb-8 max-w-sm text-sm">Allow location access to get real-time ETAs for both Kowloon Motor Bus and Citybus.</p>
-            <button id="locateBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-full shadow-lg transition-transform transform active:scale-95 flex items-center gap-2 text-lg">
+            <h2 class="text-2xl font-bold mb-2 text-gray-800">尋找附近巴士站</h2>
+            <p class="text-gray-500 mb-8 max-w-sm text-sm">請允許存取您的位置，以取得九巴及城巴的即時到站時間。</p>
+            <button id="locateBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-full shadow-lg transition-colors flex items-center gap-2 text-lg">
                 <i data-lucide="navigation"></i>
-                Locate Me
+                <span>定位我的位置</span>
             </button>
             <div id="locationError" class="text-red-500 mt-4 text-sm hidden font-medium bg-red-50 p-3 rounded-lg border border-red-100"></div>
         </div>
 
-        <!-- LOADING STATE -->
+        <!-- 載入中狀態 -->
         <div id="loadingState" class="hidden flex-col items-center justify-center flex-grow text-center fade-in mt-12">
             <div class="relative w-20 h-20 mb-6">
                 <div class="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
                 <div class="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
                 <i data-lucide="download-cloud" class="absolute inset-0 m-auto w-8 h-8 text-blue-600"></i>
             </div>
-            <h2 class="text-xl font-bold text-gray-800" id="loadingText">Fetching HK Data...</h2>
-            <p class="text-gray-500 mt-2 text-sm" id="loadingSubText">Connecting to Data.gov.hk</p>
+            <h2 class="text-xl font-bold text-gray-800" id="loadingText">獲取數據中...</h2>
+            <p class="text-gray-500 mt-2 text-sm" id="loadingSubText">連接政府資料庫</p>
         </div>
 
-        <!-- RESULTS STATE -->
+        <!-- 顯示結果狀態 -->
         <div id="resultsState" class="hidden flex-col gap-4 fade-in pb-20">
-            <!-- Map Container -->
+            <!-- 地圖區域 -->
             <div class="bg-white p-2 rounded-xl shadow-sm border border-gray-200">
                 <div id="map"></div>
                 <div class="flex items-center justify-center gap-4 mt-2 px-2 text-[11px] text-gray-600 font-medium">
-                    <div class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-blue-500 border border-white"></div> You</div>
-                    <div class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-red-500 border border-white"></div> KMB/LWB</div>
-                    <div class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-yellow-400 border border-white"></div> Citybus</div>
+                    <div class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-blue-500 border border-white"></div> 您</div>
+                    <div class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-red-500 border border-white"></div> 九巴/龍運</div>
+                    <div class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-yellow-400 border border-white"></div> 城巴</div>
                 </div>
             </div>
 
-            <!-- Stops List Header -->
+            <!-- 巴士站列表標題 -->
             <div class="flex justify-between items-end px-1 mt-2">
-                <h3 class="font-bold text-lg text-gray-800">Nearby Stops</h3>
+                <h3 class="font-bold text-lg text-gray-800">最近巴士站</h3>
                 <span id="stopCount" class="text-sm text-gray-500 font-medium"></span>
             </div>
 
-            <!-- Stops List Container -->
+            <!-- 巴士站列表 -->
             <div id="stopsList" class="flex flex-col gap-3"></div>
         </div>
     </main>
 
-    <!-- ETA MODAL -->
+    <!-- ETA 彈出視窗 -->
     <div id="arrivalsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex-col justify-end backdrop-blur-sm transition-opacity">
         <div class="bg-white w-full rounded-t-3xl p-5 shadow-2xl max-h-[85vh] flex flex-col slide-up relative">
             <button id="closeModalBtn" class="absolute top-4 right-4 p-2 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200">
@@ -134,22 +135,22 @@
             
             <div class="mb-5 pr-10">
                 <div class="flex items-center gap-2 mb-1">
-                    <span id="modalAgencyBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">AGENCY</span>
+                    <span id="modalAgencyBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">營運商</span>
                 </div>
-                <h3 class="text-xl font-bold text-gray-800 leading-tight" id="modalStopNameEn">Stop Name</h3>
-                <h4 class="text-md text-gray-500 font-medium mt-0.5" id="modalStopNameTc">站名</h4>
+                <h3 class="text-xl font-bold text-gray-800 leading-tight" id="modalStopNameTc">站名</h3>
+                <h4 class="text-md text-gray-500 font-medium mt-0.5" id="modalStopNameEn">Stop Name</h4>
                 
                 <div class="flex items-center gap-2 text-green-600 text-xs mt-2 font-semibold bg-green-50 w-max px-2 py-1 rounded-md">
                     <span class="relative flex h-2 w-2">
                       <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                       <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                     </span>
-                    Live Data Active
+                    即時數據連線中
                 </div>
             </div>
 
             <div id="arrivalsList" class="overflow-y-auto flex flex-col gap-3 pb-6">
-                <!-- Arrival items injected here -->
+                <!-- 即時到站時間會注入這裡 -->
             </div>
         </div>
     </div>
@@ -188,17 +189,36 @@
         };
 
         UI.locateBtn.addEventListener('click', initFlow);
-        UI.refreshBtn.addEventListener('click', initFlow);
+        UI.refreshBtn.addEventListener('click', () => {
+            userLocation = null; // 強制重新定位
+            initFlow();
+        });
         UI.closeModal.addEventListener('click', () => UI.modal.classList.add('hidden'));
         UI.modal.addEventListener('click', (e) => {
             if (e.target === UI.modal) UI.modal.classList.add('hidden');
         });
 
+        // 加入超時控制的安全 Fetch
+        async function fetchWithTimeout(resource, options = {}) {
+            const { timeout = 10000 } = options; // 10秒超時
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            const response = await fetch(resource, { ...options, signal: controller.signal });
+            clearTimeout(id);
+            return response;
+        }
+
         async function initFlow() {
-            showLoading("Finding your location...", "Accessing GPS");
+            // 點擊即時反饋
+            const originalBtnHtml = UI.locateBtn.innerHTML;
+            UI.locateBtn.innerHTML = `<i data-lucide="loader-2" class="animate-spin w-5 h-5"></i><span>處理中...</span>`;
+            lucide.createIcons();
+
+            showLoading("正在獲取您的定位...", "讀取 GPS 訊號");
             
             if (!navigator.geolocation) {
-                showError("Geolocation is not supported by your browser.");
+                showError("您的瀏覽器不支援定位功能。");
+                UI.locateBtn.innerHTML = originalBtnHtml;
                 return;
             }
 
@@ -206,74 +226,70 @@
                 async (position) => {
                     userLocation = { lat: position.coords.latitude, lon: position.coords.longitude };
                     await processHKData();
+                    UI.locateBtn.innerHTML = originalBtnHtml; // 還原按鈕
                 },
                 (error) => {
-                    showError("Location access denied or unavailable.");
+                    console.warn("Geolocation Error:", error);
+                    showError("無法取得定位，請檢查手機的 GPS 權限是否開啟。");
+                    UI.locateBtn.innerHTML = originalBtnHtml;
                 },
-                { enableHighAccuracy: true, timeout: 10000 }
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             );
         }
 
         async function processHKData() {
             try {
-                showLoading("Downloading Databases...", "Syncing with KMB & CTB");
+                showLoading("正在下載香港巴士路線庫...", "與九巴及城巴伺服器同步");
 
-                let fetchPromises = [];
+                // 使用 Promise.all 和獨立的 catch，確保就算一個失敗，另一個也能顯示
+                let kmbReq = kmbStopsData ? Promise.resolve(kmbStopsData) : 
+                    fetchWithTimeout('https://data.etabus.gov.hk/v1/transport/kmb/stop')
+                    .then(res => res.json())
+                    .then(data => data.data.map(s => ({...s, agency: 'kmb'})))
+                    .catch(err => { console.error("KMB 讀取失敗", err); return []; });
 
-                // Fetch KMB Database if not cached
-                if (!kmbStopsData) {
-                    fetchPromises.push(
-                        fetch('https://data.etabus.gov.hk/v1/transport/kmb/stop')
-                        .then(res => res.json())
-                        .then(data => { kmbStopsData = data.data.map(s => ({...s, agency: 'kmb'})); })
-                        .catch(err => console.error("KMB API Error", err))
-                    );
-                }
+                let ctbReq = ctbStopsData ? Promise.resolve(ctbStopsData) : 
+                    fetchWithTimeout('https://rt.data.gov.hk/v2/transport/citybus/stop')
+                    .then(res => res.json())
+                    .then(data => data.data.map(s => ({...s, agency: 'ctb'})))
+                    .catch(err => { console.error("CTB 讀取失敗", err); return []; });
 
-                // Fetch CTB Database if not cached
-                if (!ctbStopsData) {
-                    fetchPromises.push(
-                        fetch('https://rt.data.gov.hk/v2/transport/citybus/stop')
-                        .then(res => res.json())
-                        .then(data => { ctbStopsData = data.data.map(s => ({...s, agency: 'ctb'})); })
-                        .catch(err => console.error("CTB API Error", err))
-                    );
-                }
+                // 平行下載，提升速度
+                let [kmbRes, ctbRes] = await Promise.all([kmbReq, ctbReq]);
+                
+                kmbStopsData = kmbRes;
+                ctbStopsData = ctbRes;
 
-                // Wait for both to finish (Promise.allSettled prevents one failure from breaking the whole app)
-                await Promise.allSettled(fetchPromises);
-
-                const allStops = [...(kmbStopsData || []), ...(ctbStopsData || [])];
+                const allStops = [...kmbStopsData, ...ctbStopsData];
 
                 if (allStops.length === 0) {
-                    throw new Error("Could not load any bus stops from Data.gov.hk.");
+                    throw new Error("API 沒有返回任何數據");
                 }
 
-                showLoading("Calculating distances...", "Finding stops within 500m");
+                showLoading("正在計算距離...", "為您篩選最近的巴士站");
 
-                // Filter stops by distance
-                nearbyStops = [];
+                // 計算距離
                 for (let stop of allStops) {
-                    // Note: KMB uses `long`, CTB uses `long` or `longitude`. Safely parse both.
+                    // 安全讀取經緯度 (部分 API 叫 long，部分叫 longitude)
                     const stopLon = stop.long || stop.longitude;
-                    const dist = calculateDistance(userLocation.lat, userLocation.lon, parseFloat(stop.lat), parseFloat(stopLon));
-                    if (dist <= 500) {
-                        nearbyStops.push({ ...stop, distance: Math.round(dist) });
+                    if (!stop.lat || !stopLon) {
+                        stop.distance = 9999999;
+                        continue;
                     }
+                    stop.distance = Math.round(calculateDistance(userLocation.lat, userLocation.lon, parseFloat(stop.lat), parseFloat(stopLon)));
                 }
 
-                nearbyStops.sort((a, b) => a.distance - b.distance);
+                // 依距離由近到遠排序
+                allStops.sort((a, b) => a.distance - b.distance);
 
-                if (nearbyStops.length === 0) {
-                    showError("You don't appear to be near any bus routes in Hong Kong (or no stops within 500m).");
-                    return;
-                }
+                // 取最近的 30 個巴士站 (移除 500米 限制，確保深圳也能顯示關口站)
+                nearbyStops = allStops.slice(0, 30);
 
                 renderStops();
 
             } catch (error) {
                 console.error(error);
-                showError("Failed to connect to HK Government Data APIs. Please try again later.");
+                showError("無法連接至香港政府資料庫 (Data.gov.hk)，請稍後再試。");
             }
         }
 
@@ -284,15 +300,18 @@
             UI.results.classList.add('flex');
             UI.refreshBtn.classList.remove('hidden');
 
-            UI.stopCount.innerText = `${nearbyStops.length} stops nearby`;
+            UI.stopCount.innerText = `顯示最近 ${nearbyStops.length} 個車站`;
             UI.stopsList.innerHTML = '';
             
             nearbyStops.forEach(stop => {
                 const isKmb = stop.agency === 'kmb';
                 const badgeColor = isKmb ? 'bg-red-600 text-white' : 'bg-yellow-400 text-blue-900';
-                const badgeText = isKmb ? 'KMB / LWB' : 'Citybus';
+                const badgeText = isKmb ? '九巴 / 龍運' : '城巴';
                 const iconColor = isKmb ? 'text-red-600' : 'text-yellow-600';
                 const iconBg = isKmb ? 'bg-red-50' : 'bg-yellow-50';
+                
+                // 處理距離顯示 (超過 1000m 顯示公里)
+                let distanceDisplay = stop.distance > 1000 ? `${(stop.distance / 1000).toFixed(1)} km` : `${stop.distance} m`;
 
                 const el = document.createElement('div');
                 el.className = "bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center cursor-pointer hover:shadow-md transition-shadow active:bg-gray-50";
@@ -305,10 +324,10 @@
                             <div class="flex items-center gap-2 mb-0.5">
                                 <span class="${badgeColor} text-[9px] font-bold px-1.5 py-0.5 rounded-sm uppercase">${badgeText}</span>
                             </div>
-                            <h4 class="font-bold text-gray-800 truncate text-base leading-tight">${stop.name_en}</h4>
-                            <h5 class="text-xs text-gray-500 font-medium truncate">${stop.name_tc}</h5>
+                            <h4 class="font-bold text-gray-800 truncate text-base leading-tight">${stop.name_tc}</h4>
+                            <h5 class="text-xs text-gray-400 font-medium truncate">${stop.name_en}</h5>
                             <div class="flex items-center text-xs text-gray-500 font-semibold gap-1 mt-1">
-                                <i data-lucide="footprints" class="w-3 h-3"></i> ${stop.distance}m away
+                                <i data-lucide="footprints" class="w-3 h-3"></i> 距離 ${distanceDisplay}
                             </div>
                         </div>
                         <div class="text-gray-300 pl-2">
@@ -327,17 +346,16 @@
         async function openLiveETA(stop) {
             const isKmb = stop.agency === 'kmb';
             
-            // Set up Modal Header styling based on agency
             UI.modalAgencyBadge.className = `text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${isKmb ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-800'}`;
-            UI.modalAgencyBadge.innerText = isKmb ? 'KMB / LWB' : 'Citybus (CTB)';
+            UI.modalAgencyBadge.innerText = isKmb ? '九巴 / 龍運' : '城巴 (Citybus)';
             
-            UI.modalNameEn.innerText = stop.name_en;
             UI.modalNameTc.innerText = stop.name_tc;
+            UI.modalNameEn.innerText = stop.name_en;
             
             UI.arrivalsList.innerHTML = `
                 <div class="flex flex-col items-center justify-center p-8 text-blue-600 gap-3">
                     <i data-lucide="loader-2" class="w-8 h-8 animate-spin"></i>
-                    <span class="text-sm font-medium">Fetching Live Data...</span>
+                    <span class="text-sm font-medium">正在取得即時班次...</span>
                 </div>
             `;
             lucide.createIcons();
@@ -346,26 +364,23 @@
             UI.modal.classList.add('flex');
 
             try {
-                let apiUrl = '';
-                if (isKmb) {
-                    apiUrl = `https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/${stop.stop}`;
-                } else {
-                    apiUrl = `https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/${stop.stop}`;
-                }
+                let apiUrl = isKmb 
+                    ? `https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/${stop.stop}`
+                    : `https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/${stop.stop}`;
 
-                const res = await fetch(apiUrl);
-                if (!res.ok) throw new Error("ETA API responded with error.");
+                const res = await fetchWithTimeout(apiUrl);
+                if (!res.ok) throw new Error("ETA API Error");
                 const json = await res.json();
                 
-                // Filter out entries with no ETA string (buses not scheduled)
+                // 過濾掉沒有預計到達時間的空班次
                 const validEtas = json.data.filter(item => item.eta !== null && item.eta !== "");
                 
-                // Group by Route & Destination
+                // 將同一路線、同一目的地的班次組合在一起
                 const routesMap = {};
                 const now = new Date();
 
                 validEtas.forEach(etaObj => {
-                    const routeKey = `${etaObj.route}-${etaObj.dir}-${etaObj.dest_en}`;
+                    const routeKey = `${etaObj.route}-${etaObj.dir}-${etaObj.dest_tc}`;
                     if (!routesMap[routeKey]) {
                         routesMap[routeKey] = {
                             route: etaObj.route,
@@ -383,7 +398,7 @@
                     routesMap[routeKey].times.push(mins);
                 });
 
-                // Convert map to array and sort by soonest arrival
+                // 排序：最快到達的路線排最上面
                 const routeList = Object.values(routesMap).map(r => {
                     r.times.sort((a,b) => a - b);
                     return r;
@@ -393,7 +408,7 @@
 
             } catch (err) {
                 console.error(err);
-                UI.arrivalsList.innerHTML = `<div class="p-4 text-center text-red-500 bg-red-50 rounded-lg">Failed to load real-time data for this stop.</div>`;
+                UI.arrivalsList.innerHTML = `<div class="p-4 text-center text-red-500 bg-red-50 rounded-lg">無法載入此站的即時班次，請稍後再試。</div>`;
             }
         }
 
@@ -404,8 +419,8 @@
                 UI.arrivalsList.innerHTML = `
                     <div class="p-8 flex flex-col items-center text-center text-gray-400 bg-gray-50 rounded-xl border border-gray-100">
                         <i data-lucide="moon" class="w-8 h-8 mb-2 opacity-50"></i>
-                        <p class="font-medium">No upcoming buses scheduled.</p>
-                        <p class="text-xs mt-1">Service may have ended for the day.</p>
+                        <p class="font-medium">暫無即時班次資料</p>
+                        <p class="text-xs mt-1">巴士服務可能已經暫停，或未有發車記錄。</p>
                     </div>`;
                 lucide.createIcons();
                 return;
@@ -416,6 +431,110 @@
                 el.className = "flex flex-col bg-white p-3 rounded-lg border border-gray-200 shadow-sm";
                 
                 const timeBadges = route.times.slice(0, 3).map((mins, idx) => {
-                    if (mins === 0) return `<span class="text-red-600 font-bold text-lg animate-pulse">Due</span>`;
+                    if (mins === 0) return `<span class="text-red-600 font-bold text-lg animate-pulse">即將到達</span>`;
                     const style = idx === 0 ? "text-gray-800 font-bold text-lg" : "text-gray-500 font-medium text-sm";
-                    return `<span class="${style}">${mins}<span class="
+                    return `<span class="${style}">${mins}<span class="text-xs font-normal ml-0.5">分鐘</span></span>`;
+                }).join('<span class="text-gray-300 mx-2">/</span>');
+
+                const routeBadgeColor = route.agency === 'kmb' ? 'bg-red-600 text-white' : 'bg-yellow-400 text-blue-900';
+
+                el.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-start gap-3">
+                            <div class="${routeBadgeColor} font-bold px-3 py-1 rounded-md min-w-[3.5rem] text-center shadow-sm text-lg border border-black/5">
+                                ${route.route}
+                            </div>
+                            <div class="flex flex-col -mt-0.5">
+                                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">往</span>
+                                <span class="font-bold text-gray-800 leading-tight">${route.dest_tc}</span>
+                                <span class="text-xs text-gray-400">${route.dest_en}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 rounded p-2 flex items-center justify-end gap-2 mt-1 border border-gray-100">
+                        ${timeBadges}
+                    </div>
+                `;
+                UI.arrivalsList.appendChild(el);
+            });
+        }
+
+        // --- 地圖及輔助功能 ---
+        
+        function updateMap() {
+            if (!map) {
+                map = L.map('map', { zoomControl: false }).setView([userLocation.lat, userLocation.lon], 16);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap',
+                    subdomains: 'abcd',
+                    maxZoom: 19
+                }).addTo(map);
+
+                const userIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div class="pulse-dot"></div>`,
+                    iconSize: [14, 14], iconAnchor: [7, 7]
+                });
+                userMarker = L.marker([userLocation.lat, userLocation.lon], {icon: userIcon, zIndexOffset: 1000}).addTo(map);
+            } else {
+                map.setView([userLocation.lat, userLocation.lon], 16);
+                userMarker.setLatLng([userLocation.lat, userLocation.lon]);
+                stopMarkers.forEach(m => map.removeLayer(m));
+                stopMarkers = [];
+            }
+
+            const bounds = L.latLngBounds([userLocation.lat, userLocation.lon]);
+
+            nearbyStops.forEach(stop => {
+                const pinColor = stop.agency === 'kmb' ? '#ef4444' : '#facc15'; 
+                
+                const stopIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background-color:${pinColor}; width:12px; height:12px; border-radius:50%; border:2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>`,
+                    iconSize: [12, 12], iconAnchor: [6, 6]
+                });
+
+                const stopLon = stop.long || stop.longitude;
+                const marker = L.marker([stop.lat, stopLon], {icon: stopIcon}).addTo(map);
+                
+                let distLabel = stop.distance > 1000 ? `${(stop.distance/1000).toFixed(1)}km` : `${stop.distance}m`;
+                marker.bindPopup(`<b>${stop.name_tc}</b><br>距離: ${distLabel}`);
+                marker.on('click', () => openLiveETA(stop));
+                stopMarkers.push(marker);
+                bounds.extend([stop.lat, stopLon]);
+            });
+
+            // 確保地圖視角可以容納用戶及所有標記
+            setTimeout(() => { map.fitBounds(bounds, { padding: [20, 20], maxZoom: 17 }); }, 100);
+        }
+
+        // 計算兩個經緯度之間的真實距離 (米)
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const p = 0.017453292519943295; 
+            const c = Math.cos;
+            const a = 0.5 - c((lat2 - lat1) * p)/2 + 
+                      c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p))/2;
+            return 12742 * Math.asin(Math.sqrt(a)) * 1000; 
+        }
+
+        function showLoading(mainText, subText) {
+            UI.error.classList.add('hidden');
+            UI.initial.classList.add('hidden');
+            UI.results.classList.add('hidden');
+            UI.refreshBtn.classList.add('hidden');
+            UI.loading.classList.remove('hidden');
+            UI.loading.classList.add('flex');
+            UI.loadingText.innerText = mainText;
+            UI.loadingSubText.innerText = subText;
+        }
+
+        function showError(msg) {
+            UI.loading.classList.add('hidden');
+            UI.loading.classList.remove('flex');
+            UI.initial.classList.remove('hidden');
+            UI.error.innerText = msg;
+            UI.error.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
