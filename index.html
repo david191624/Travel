@@ -566,7 +566,7 @@
                 UI.modalAgencyBadge.innerText = `港鐵 ${MTR_LINES[stop.line].tc}`;
             } else if (isLrt) {
                 UI.modalAgencyBadge.style.backgroundColor = '';
-                UI.modalAgencyBadge.className = `text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-orange-500 text-white`;
+                UI.modalAgencyBadge.className = `text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-green-500 text-white`;
                 UI.modalAgencyBadge.innerText = '港鐵輕鐵 (LRT)';
             } else {
                 UI.modalAgencyBadge.style.backgroundColor = '';
@@ -843,7 +843,7 @@
                 let pinColor = '#facc15'; // 城巴黃
                 if (stop.agency === 'kmb') pinColor = '#ef4444'; // 九巴紅
                 if (stop.agency === 'mtr') pinColor = '#1F2937'; // 港鐵深灰
-                if (stop.agency === 'lrt') pinColor = '#f97316'; // 輕鐵橙
+                if (stop.agency === 'lrt') pinColor = '#16f921'; // 輕鐵green
                 
                 const stopIcon = L.divIcon({
                     className: 'custom-div-icon',
